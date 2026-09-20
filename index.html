@@ -531,4 +531,210 @@ function parseSongsTxt(text) {
   const songs = [];
   const blocks = text.split(/\n-{3,}\n/);
   blocks.forEach((block, index) => {
-    const song = { added
+    const song = { added_at: 0, order: index };
+    block.split('\n').forEach(line => {
+      const m = line.match(/^\s*(name|link|date)\s*:\s*(.+?)\s*$/i);
+      if (m) {
+        const key = m[1].toLowerCase();
+        const val = m[2].trim();
+        if (key === 'name') song.name = val;
+        if (key === 'link') song.link = val;
+        if (key === 'date') song.added_at = parseInt(val) || 0;
+      }
+    });
+    if (song.name && song.link) songs.push(song);
+  });
+  return songs;
+}
+
+// ==================== لود آهنگ‌ها ====================
+async function loadSongs() {
+  try {
+    const res = await fetch(SONGS_API + "?t=" + Date.now());
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const text = await res.text();
+    let songs = parseSongsTxt(text);
+
+    songs.sort((a, b) => {
+      if ((b.added_at || 0) !== (a.added_at || 0)) {
+        return (b.added_at || 0) - (a.added_at || 0);
+      }
+      return a.order - b.order;
+    });
+
+    renderSongs(songs);
+  } catch (err) {
+    console.log("خطا در بارگذاری آهنگ‌ها:", err);
+    document.getElementById("songs-grid").innerHTML =
+      '<div class="empty-msg">خطا در بارگذاری آهنگ‌ها 😢</div>';
+  }
+}
+
+function renderSongs(songs) {
+  const grid = document.getElementById('songs-grid');
+  if (!songs.length) {
+    grid.innerHTML = '<div class="empty-msg">هنوز آهنگی اضافه نشده 🎵</div>';
+    return;
+  }
+
+  const NEW_THRESHOLD = 7 * 24 * 60 * 60;
+  const now = Math.floor(Date.now() / 1000);
+
+  grid.innerHTML = songs.map(song => {
+    const isNew = song.added_at && (now - song.added_at) < NEW_THRESHOLD;
+    const safeName = escapeHtml(song.name);
+    const proxied = proxyUrl(song.link);
+    const safeLink = escapeAttr(proxied);
+    return `
+      <div class="song-card ${isNew ? 'is-new' : ''}" data-src="${safeLink}">
+        <div class="song-title">
+          ${isNew ? '<span class="new-badge">جدید</span>' : ''}
+          ${safeName}
+        </div>
+        <div class="custom-player">
+          <div class="player-main">
+            <button class="play-btn" aria-label="پخش">
+              <svg class="play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <svg class="pause-icon" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+            </button>
+            <div class="progress-wrap"><div class="progress-fill"></div></div>
+            <div class="time-display">0:00 / 0:00</div>
+          </div>
+          <div class="player-controls">
+            <div class="volume-wrap">
+              <svg class="volume-icon" viewBox="0 0 24 24"><path d="M3 10v4h4l5 5V5L7 10H3zm13.5 2c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+              <input type="range" class="volume-slider" min="0" max="1" step="0.01" value="1">
+            </div>
+            <a class="download-btn" href="${safeLink}" download target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>
+              دانلود
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  attachPlayers();
+  bindHover();
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function escapeAttr(str) { return escapeHtml(str); }
+
+function formatTime(sec) {
+  if (isNaN(sec)) return '0:00';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function attachPlayers() {
+  document.querySelectorAll('.song-card').forEach(card => {
+    const src = card.dataset.src;
+    const playBtn = card.querySelector('.play-btn');
+    const progressWrap = card.querySelector('.progress-wrap');
+    const progressFill = card.querySelector('.progress-fill');
+    const timeDisplay = card.querySelector('.time-display');
+    const volumeSlider = card.querySelector('.volume-slider');
+    const volumeIcon = card.querySelector('.volume-icon');
+
+    const songAudio = new Audio();
+    songAudio.preload = 'metadata';
+    songAudio.src = src;
+    card._audio = songAudio;
+    let isDragging = false;
+
+    playBtn.addEventListener('click', () => {
+      if (songAudio.paused) {
+        document.querySelectorAll('.song-card').forEach(c => {
+          if (c === card) return;
+          const otherAudio = c._audio;
+          const otherBtn = c.querySelector('.play-btn');
+          if (otherAudio && !otherAudio.paused) {
+            otherAudio.pause();
+            otherBtn.classList.remove('playing');
+          }
+        });
+        playBtn.classList.add('loading');
+        songAudio.play().then(() => {
+          playBtn.classList.add('playing');
+        }).catch(e => {
+          console.log('خطای پخش:', e);
+          timeDisplay.textContent = 'خطا ❌';
+        }).finally(() => {
+          playBtn.classList.remove('loading');
+        });
+      } else {
+        songAudio.pause();
+        playBtn.classList.remove('playing');
+      }
+    });
+
+    songAudio.addEventListener('timeupdate', () => {
+      if (!isDragging && songAudio.duration) {
+        progressFill.style.width = (songAudio.currentTime / songAudio.duration) * 100 + '%';
+      }
+      timeDisplay.textContent = formatTime(songAudio.currentTime) + ' / ' + formatTime(songAudio.duration);
+    });
+
+    songAudio.addEventListener('loadedmetadata', () => {
+      timeDisplay.textContent = '0:00 / ' + formatTime(songAudio.duration);
+    });
+
+    songAudio.addEventListener('ended', () => {
+      playBtn.classList.remove('playing');
+      progressFill.style.width = '0%';
+      timeDisplay.textContent = '0:00 / ' + formatTime(songAudio.duration);
+    });
+
+    songAudio.addEventListener('error', (e) => {
+      console.log('خطای لود آهنگ:', src, e);
+      timeDisplay.textContent = 'خطا در لود ❌';
+    });
+
+    function seekFromEvent(e) {
+      const rect = progressWrap.getBoundingClientRect();
+      let x = (e.clientX || e.touches[0].clientX) - rect.left;
+      const pct = Math.max(0, Math.min(1, x / rect.width));
+      if (songAudio.duration) {
+        songAudio.currentTime = pct * songAudio.duration;
+        progressFill.style.width = (pct * 100) + '%';
+      }
+    }
+
+    progressWrap.addEventListener('mousedown', (e) => { isDragging = true; seekFromEvent(e); });
+    document.addEventListener('mousemove', (e) => { if (isDragging) seekFromEvent(e); });
+    document.addEventListener('mouseup', () => { isDragging = false; });
+
+    progressWrap.addEventListener('touchstart', (e) => { isDragging = true; seekFromEvent(e); }, { passive: true });
+    progressWrap.addEventListener('touchmove', (e) => { if (isDragging) seekFromEvent(e); }, { passive: true });
+    progressWrap.addEventListener('touchend', () => { isDragging = false; });
+
+    volumeSlider.addEventListener('input', () => {
+      songAudio.volume = parseFloat(volumeSlider.value);
+    });
+
+    let lastVolume = 1;
+    volumeIcon.addEventListener('click', () => {
+      if (songAudio.volume > 0) {
+        lastVolume = songAudio.volume;
+        songAudio.volume = 0;
+        volumeSlider.value = 0;
+      } else {
+        songAudio.volume = lastVolume || 1;
+        volumeSlider.value = lastVolume || 1;
+      }
+    });
+  });
+}
+
+// شروع
+loadSongs();
+</script>
+</body>
+</html>
