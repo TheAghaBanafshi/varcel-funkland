@@ -1,8 +1,10 @@
 // Vercel Serverless Function
 // GET /api/proxy?url=ENCODED_LINK
-// فایل آهنگ رو پروکسی می‌کنه تا CORS و hotlink حل شه
+// فقط اگه لینک از jsDelivr نبود، از این استفاده می‌شه
 
 const ALLOWED_HOSTS = [
+  "cdn.jsdelivr.net",
+  "raw.githubusercontent.com",
   "cdn.imgurl.ir",
   "imgurl.ir",
   "files.catbox.moe",
@@ -10,33 +12,21 @@ const ALLOWED_HOSTS = [
   "archive.org",
   "ia801504.us.archive.org",
   "ia601504.us.archive.org",
-  "ia801505.us.archive.org",
-  "ia601505.us.archive.org",
-  "ia800000.us.archive.org",
-  "ia900000.us.archive.org",
-  // اگه دامنه دیگه‌ای داری، اینجا اضافه کن
 ];
 
 export default async function handler(req, res) {
-  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "*");
   res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges, Content-Type");
 
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
 
   const target = req.query.url;
-  if (!target) {
-    return res.status(400).send("missing url");
-  }
+  if (!target) return res.status(400).send("missing url");
 
   let targetUrl;
-  try {
-    targetUrl = new URL(target);
-  } catch {
+  try { targetUrl = new URL(target); } catch {
     return res.status(400).send("invalid url");
   }
 
@@ -46,13 +36,10 @@ export default async function handler(req, res) {
 
   try {
     const headers = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-      "Referer": targetUrl.origin + "/",
+      "User-Agent": "Mozilla/5.0 FunkLandProxy/1.0",
       "Accept": "*/*",
     };
-    if (req.headers.range) {
-      headers["Range"] = req.headers.range;
-    }
+    if (req.headers.range) headers["Range"] = req.headers.range;
 
     const upstream = await fetch(targetUrl.toString(), {
       method: req.method,
@@ -60,7 +47,6 @@ export default async function handler(req, res) {
       redirect: "follow",
     });
 
-    // کپی هدرهای مهم
     const contentType = upstream.headers.get("content-type") || guessAudioMime(targetUrl.pathname);
     res.setHeader("Content-Type", contentType);
 
@@ -71,13 +57,9 @@ export default async function handler(req, res) {
     if (contentRange) res.setHeader("Content-Range", contentRange);
 
     res.setHeader("Accept-Ranges", "bytes");
-
     res.status(upstream.status);
 
-    // استریم بدنه
-    if (!upstream.body) {
-      return res.end();
-    }
+    if (!upstream.body) return res.end();
 
     const reader = upstream.body.getReader();
     while (true) {
@@ -98,6 +80,5 @@ function guessAudioMime(path) {
   if (p.endsWith(".ogg")) return "audio/ogg";
   if (p.endsWith(".wav")) return "audio/wav";
   if (p.endsWith(".webm")) return "audio/webm";
-  if (p.endsWith(".flac")) return "audio/flac";
   return "audio/mpeg";
 }
