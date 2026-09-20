@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<title>Funk Land</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { overflow-x: hidden; }
+  body { font-family: 'Vazirmatn', Tahoma, sans-serif; background: #0a0014; color: #fff; min-height: 100vh; }
+
+  /* ============ کرسر ============ */
+  @media (hover: hover) and (pointer: fine) { * { cursor: none !important; } }
+  #cursor-dot {
+    position: fixed; width: 10px; height: 10px;
+    background: #b366ff; border-radius: 50%;
+    pointer-events: none; z-index: 99999;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 15px #b366ff, 0 0 30px #8a2be2;
+    transition: transform 0.05s ease-out, width 0.2s, height 0.2s;
+    mix-blend-mode: screen;
+  }
+  #cursor-ring {
+    position: fixed; width: 40px; height: 40px;
+    border: 2px solid #b366ff; border-radius: 50%;
+    pointer-events: none; z-index: 99998;
+    transform: translate(-50%, -50%);
+    transition: transform 0.15s ease-out, width 0.25s, height 0.25s, border-color 0.25s, background 0.25s;
+    background: rgba(179,102,255,0.08);
+    box-shadow: 0 0 20px rgba(179,102,255,0.6);
+  }
+  #cursor-ring.hover {
+    width: 65px; height: 65px; border-color: #fff;
+    background: rgba(179,102,255,0.25);
+    box-shadow: 0 0 30px #b366ff, 0 0 60px #8a2be2;
+  }
+  #cursor-dot.hover { width: 16px; height: 16px; background: #fff; }
+  @media (hover: none), (pointer: coarse) {
+    #cursor-dot, #cursor-ring { display: none !important; }
+    * { cursor: auto !important; }
+  }
+
+  /* ============ تریلر ============ */
+  #trailer {
+    position: fixed; inset: 0;
+    background: radial-gradient(circle at 50% 50%, #2a0050 0%, #0a0014 70%);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 9999; overflow: hidden; flex-direction: column; padding: 20px;
+  }
+  .particle {
+    position: absolute; width: 6px; height: 6px;
+    background: #b366ff; border-radius: 50%;
+    box-shadow: 0 0 20px #b366ff, 0 0 40px #8a2be2;
+    animation: floatParticle 8s infinite ease-in-out;
+  }
+  @keyframes floatParticle {
+    0%,100% { transform: translate(0,0) scale(1); opacity: 0.3; }
+    50% { transform: translate(40px,-60px) scale(1.8); opacity: 1; }
+  }
+  #trailer-text {
+    font-size: clamp(1.5rem, 6vw, 5rem); font-weight: 900;
+    text-align: center; color: #fff;
+    text-shadow: 0 0 20px #b366ff, 0 0 40px #8a2be2, 0 0 80px #6a0dad;
+    animation: pulse 2s infinite ease-in-out;
+    padding: 20px; z-index: 2; transition: all 0.5s ease;
+    position: relative; max-width: 95vw; word-wrap: break-word;
+  }
+  @keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.05);} }
+  .glitch { animation: glitch 0.3s infinite; }
+  @keyframes glitch {
+    0% { transform: translate(0); text-shadow: 0 0 20px #b366ff, 0 0 40px #8a2be2; }
+    20% { transform: translate(-3px, 2px); text-shadow: 3px 0 #ff00ff, -3px 0 #00ffff; }
+    40% { transform: translate(3px, -2px); text-shadow: -3px 0 #ff00ff, 3px 0 #00ffff; }
+    60% { transform: translate(-2px, -3px); text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
+    80% { transform: translate(2px, 3px); text-shadow: -2px 0 #ff00ff, 2px 0 #00ffff; }
+    100% { transform: translate(0); text-shadow: 0 0 20px #b366ff, 0 0 40px #8a2be2; }
+  }
+  .shake { animation: shake 0.5s; }
+  @keyframes shake {
+    0%,100% { transform: translate(0); }
+    10%,30%,50%,70%,90% { transform: translate(-8px, 4px); }
+    20%,40%,60%,80% { transform: translate(8px, -4px); }
+  }
+  #enter-btn {
+    position: absolute; bottom: 15%;
+    padding: 16px 45px; font-size: clamp(1rem, 3vw, 1.4rem); font-weight: bold;
+    font-family: 'Vazirmatn', Tahoma, sans-serif;
+    color: #fff; background: linear-gradient(135deg, #8a2be2, #b366ff);
+    border: none; border-radius: 50px; cursor: pointer;
+    box-shadow: 0 0 30px #8a2be2, 0 0 60px #6a0dad;
+    animation: pulse 1.5s infinite; transition: transform 0.3s; z-index: 3;
+  }
+  #enter-btn:hover { transform: scale(1.1); }
+  #loading-bar {
+    position: absolute; bottom: 8%; width: 70%; max-width: 500px; height: 6px;
+    background: rgba(179,102,255,0.2); border-radius: 10px; overflow: hidden;
+  }
+  #loading-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #8a2be2, #b366ff);
+    box-shadow: 0 0 20px #b366ff; transition: width 0.3s linear;
+  }
+  #flash {
+    position: fixed; inset: 0; background: #fff;
+    opacity: 0; pointer-events: none; z-index: 10000;
+    transition: opacity 0.3s;
+  }
+
+  /* ============ صفحه اصلی ============ */
+  #main-site {
+    display: none; padding: 30px 15px; min-height: 100vh;
+    background:
+      radial-gradient(circle at 20% 10%, #3a0060 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, #6a0dad 0%, transparent 50%),
+      #0a0014;
+    position: relative; overflow: hidden;
+  }
+  #main-site::before {
+    content:''; position: absolute; inset: 0;
+    background-image:
+      radial-gradient(2px 2px at 20% 30%, #b366ff, transparent),
+      radial-gradient(2px 2px at 60% 70%, #8a2be2, transparent),
+      radial-gradient(2px 2px at 80% 20%, #b366ff, transparent),
+      radial-gradient(2px 2px at 30% 80%, #8a2be2, transparent);
+    background-size: 200px 200px;
+    animation: moveBg 20s linear infinite;
+    opacity: 0.6; pointer-events: none;
+  }
+  @keyframes moveBg { from{background-position:0 0;} to{background-position:200px 200px;} }
+  .header { text-align: center; margin-bottom: 30px; position: relative; z-index: 1; }
+  .header h1 {
+    font-family: 'Orbitron', 'Vazirmatn', Tahoma, sans-serif;
+    font-size: clamp(2rem, 8vw, 5rem); font-weight: 900;
+    letter-spacing: 6px;
+    background: linear-gradient(90deg, #b366ff, #fff, #b366ff);
+    background-size: 200% auto;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    animation: shine 3s linear infinite; margin-bottom: 10px;
+    word-wrap: break-word;
+    text-shadow: 0 0 40px rgba(179,102,255,0.5);
+  }
+  @keyframes shine { to { background-position: 200% center; } }
+  .header p { color: #b366ff; font-size: clamp(0.9rem, 3vw, 1.2rem); text-shadow: 0 0 15px #8a2be2; font-weight: 700; }
+
+  #replay-btn {
+    display: block; margin: 15px auto 30px;
+    padding: 12px 30px; background: transparent;
+    border: 2px solid #b366ff; color: #b366ff;
+    border-radius: 30px; cursor: pointer;
+    font-family: 'Vazirmatn', Tahoma, sans-serif;
+    font-size: clamp(0.9rem, 2.5vw, 1rem); font-weight: bold;
+    transition: all 0.3s; position: relative; z-index: 1;
+  }
+  #replay-btn:hover {
+    background: #b366ff; color: #0a0014;
+    box-shadow: 0 0 30px #b366ff; transform: scale(1.05);
+  }
+
+  .new-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #ff00ff, #b366ff);
+    color: #fff; font-size: 0.7rem; font-weight: 900;
+    padding: 3px 10px; border-radius: 10px;
+    margin-right: 8px;
+    box-shadow: 0 0 15px #ff00ff;
+    animation: pulseBadge 1.5s infinite;
+    vertical-align: middle;
+  }
+  @keyframes pulseBadge {
+    0%,100% { transform: scale(1); box-shadow: 0 0 15px #ff00ff; }
+    50% { transform: scale(1.1); box-shadow: 0 0 25px #ff00ff, 0 0 40px #b366ff; }
+  }
+
+  .songs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px; max-width: 1200px; margin: 0 auto;
+    position: relative; z-index: 1;
+  }
+  @media (max-width: 600px) {
+    .songs-grid { grid-template-columns: 1fr; gap: 15px; }
+    .song-card { padding: 18px; }
+    #replay-btn { padding: 10px 20px; }
+    #enter-btn { bottom: 20%; padding: 14px 30px; }
+  }
+
+  .song-card {
+    background: rgba(138, 43, 226, 0.15);
+    border: 2px solid rgba(179, 102, 255, 0.4);
+    border-radius: 20px; padding: 25px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative; overflow: hidden;
+  }
+  .song-card::before {
+    content:''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, transparent, rgba(179,102,255,0.3), transparent);
+    transform: translateX(-100%); transition: transform 0.6s;
+    pointer-events: none;
+  }
+  .song-card:hover::before { transform: translateX(100%); }
+  .song-card:hover {
+    transform: translateY(-10px) scale(1.03);
+    border-color: #b366ff;
+    box-shadow: 0 0 40px #8a2be2, 0 0 80px rgba(138,43,226,0.5);
+  }
+  .song-card.is-new {
+    border-color: #ff00ff;
+    box-shadow: 0 0 25px rgba(255,0,255,0.4);
+  }
+  .song-title {
+    font-size: clamp(1.1rem, 3vw, 1.4rem); font-weight: 900;
+    color: #fff; margin-bottom: 15px;
+    text-shadow: 0 0 10px #b366ff;
+    word-wrap: break-word;
+    display: flex; align-items: center; gap: 8px;
+    flex-wrap: wrap;
+  }
+  .song-title::before { content: '🎵'; filter: hue-rotate(270deg); }
+
+  /* ============ پلیر ============ */
+  .custom-player { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+  .player-main { display: flex; align-items: center; gap: 12px; }
+  .play-btn {
+    flex-shrink: 0; width: 48px; height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8a2be2, #b366ff);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 20px rgba(179,102,255,0.6);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .play-btn:hover { transform: scale(1.08); box-shadow: 0 0 30px #b366ff, 0 0 60px #8a2be2; }
+  .play-btn svg { width: 22px; height: 22px; fill: #fff; margin-right: -2px; }
+  .play-btn.playing svg.play-icon { display: none; }
+  .play-btn:not(.playing) svg.pause-icon { display: none; }
+  .play-btn.loading { pointer-events: none; opacity: 0.7; }
+  .play-btn.loading svg { display: none; }
+  .play-btn.loading::after {
+    content: '';
+    width: 20px; height: 20px;
+    border: 2px solid #fff;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .progress-wrap {
+    flex: 1; position: relative; height: 6px;
+    background: rgba(179,102,255,0.2);
+    border-radius: 10px; cursor: pointer; overflow: hidden; min-width: 60px;
+  }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #8a2be2, #b366ff);
+    border-radius: 10px; box-shadow: 0 0 10px #b366ff;
+    transition: width 0.1s linear; position: relative;
+  }
+  .progress-fill::after {
+    content: ''; position: absolute;
+    right: -6px; top: 50%; transform: translateY(-50%);
+    width: 12px; height: 12px; background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 15px #b366ff, 0 0 25px #8a2be2;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .progress-wrap:hover .progress-fill::after { opacity: 1; }
+  .time-display {
+    flex-shrink: 0; font-family: 'Orbitron', monospace;
+    font-size: 0.75rem; color: #b366ff; letter-spacing: 1px;
+    min-width: 75px; text-align: left; direction: ltr;
+  }
+  .player-controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .volume-wrap { display: flex; align-items: center; gap: 8px; flex: 1; max-width: 200px; }
+  .volume-icon { width: 20px; height: 20px; fill: #b366ff; flex-shrink: 0; cursor: pointer; transition: fill 0.2s; }
+  .volume-icon:hover { fill: #fff; }
+  .volume-slider {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    height: 4px; background: rgba(179,102,255,0.25);
+    border-radius: 10px; outline: none; cursor: pointer;
+  }
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px;
+    background: linear-gradient(135deg, #8a2be2, #b366ff);
+    border-radius: 50%; cursor: pointer;
+    box-shadow: 0 0 10px #b366ff;
+  }
+  .volume-slider::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: linear-gradient(135deg, #8a2be2, #b366ff);
+    border: none; border-radius: 50%; cursor: pointer;
+    box-shadow: 0 0 10px #b366ff;
+  }
+  .download-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px; background: transparent;
+    border: 2px solid #b366ff; color: #b366ff;
+    border-radius: 20px; text-decoration: none;
+    font-family: 'Vazirmatn', Tahoma, sans-serif;
+    font-size: 0.85rem; font-weight: bold;
+    transition: all 0.25s; flex-shrink: 0;
+  }
+  .download-btn:hover {
+    background: #b366ff; color: #0a0014;
+    box-shadow: 0 0 20px #b366ff; transform: scale(1.05);
+  }
+  .download-btn svg { width: 14px; height: 14px; fill: currentColor; }
+
+  .empty-msg {
+    text-align: center; color: #b366ff;
+    font-size: clamp(1rem, 3vw, 1.3rem);
+    padding: 60px 20px; grid-column: 1/-1;
+  }
+
+  .light-ring {
+    position: absolute; border: 2px solid #b366ff;
+    border-radius: 50%; pointer-events: none;
+    animation: ringExpand 2s ease-out infinite;
+  }
+  @keyframes ringExpand {
+    from { width: 0; height: 0; opacity: 1; }
+    to { width: 300px; height: 300px; opacity: 0; transform: translate(-50%, -50%); }
+  }
+  @media (max-width: 600px) {
+    #trailer-text { padding: 15px; }
+    #loading-bar { bottom: 5%; width: 85%; }
+    #enter-btn { bottom: 12%; }
+    .time-display { font-size: 0.65rem; min-width: 60px; }
+    .play-btn { width: 42px; height: 42px; }
+    .download-btn { padding: 6px 10px; font-size: 0.75rem; }
+  }
+  @supports (-webkit-touch-callout: none) {
+    body, #trailer, #main-site { min-height: -webkit-fill-available; }
+  }
+</style>
+</head>
+<body>
+
+<div id="cursor-ring"></div>
+<div id="cursor-dot"></div>
+<div id="flash"></div>
+
+<!-- ============ تریلر ============ -->
+<div id="trailer">
+  <div id="particles"></div>
+  <h1 id="trailer-text">🎧 آماده‌ای؟</h1>
+  <button id="enter-btn">ورود به فانک لند</button>
+  <div id="loading-bar"><div id="loading-fill"></div></div>
+  <audio id="trailer-audio" src="uploads/tentana.m4a" preload="auto"></audio>
+</div>
+
+<!-- ============ صفحه اصلی ============ -->
+<div id="main-site">
+  <div class="header">
+    <h1>FUNK LAND</h1>
+    <p>💜 سرزمین فانک 💜</p>
+  </div>
+  <button id="replay-btn">🔁 پخش دوباره تریلر</button>
+
+  <div class="songs-grid" id="songs-grid">
+    <div class="empty-msg">در حال بارگذاری آهنگ‌ها... 🎵</div>
+  </div>
+</div>
+
+<script>
+// ==================== تنظیمات ====================
+const SONGS_API = "/api/songs";
+const PROXY_API = "/api/proxy";
+
+// ==================== کرسر ====================
+const cursorDot = document.getElementById('cursor-dot');
+const cursorRing = document.getElementById('cursor-ring');
+let mouseX = 0, mouseY = 0, ringX = 0, ringY = 0;
+const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+if (isDesktop) {
+  document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX; mouseY = e.clientY;
+    cursorDot.style.left = mouseX + 'px';
+    cursorDot.style.top = mouseY + 'px';
+  });
+  (function animateRing() {
+    ringX += (mouseX - ringX) * 0.18;
+    ringY += (mouseY - ringY) * 0.18;
+    cursorRing.style.left = ringX + 'px';
+    cursorRing.style.top = ringY + 'px';
+    requestAnimationFrame(animateRing);
+  })();
+  function bindHover() {
+    document.querySelectorAll('a, button, input, [role="button"], .progress-wrap, .song-card').forEach(el => {
+      if (el.dataset.cursorBound) return;
+      el.dataset.cursorBound = '1';
+      el.addEventListener('mouseenter', () => { cursorDot.classList.add('hover'); cursorRing.classList.add('hover'); });
+      el.addEventListener('mouseleave', () => { cursorDot.classList.remove('hover'); cursorRing.classList.remove('hover'); });
+    });
+  }
+  bindHover();
+  setInterval(bindHover, 2000);
+}
+
+// ==================== ذرات ====================
+const particlesBox = document.getElementById('particles');
+const particleCount = window.innerWidth < 600 ? 30 : 70;
+for (let i = 0; i < particleCount; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.left = Math.random() * 100 + '%';
+  p.style.top = Math.random() * 100 + '%';
+  p.style.animationDelay = (Math.random() * 8) + 's';
+  p.style.animationDuration = (6 + Math.random() * 6) + 's';
+  particlesBox.appendChild(p);
+}
+
+// ==================== عناصر تریلر ====================
+const enterBtn = document.getElementById('enter-btn');
+const trailerText = document.getElementById('trailer-text');
+const audio = document.getElementById('trailer-audio');
+const loadingFill = document.getElementById('loading-fill');
+const trailer = document.getElementById('trailer');
+const mainSite = document.getElementById('main-site');
+const flash = document.getElementById('flash');
+const replayBtn = document.getElementById('replay-btn');
+
+const urlParams = new URLSearchParams(window.location.search);
+const skipTrailer = urlParams.get('trailer') === 'false';
+
+let started = false;
+
+function shakeScreen() {
+  document.body.classList.add('shake');
+  setTimeout(() => document.body.classList.remove('shake'), 500);
+}
+function doFlash() {
+  flash.style.opacity = '0.8';
+  setTimeout(() => flash.style.opacity = '0', 300);
+}
+function spawnRing(x, y) {
+  const ring = document.createElement('div');
+  ring.className = 'light-ring';
+  ring.style.left = x + 'px';
+  ring.style.top = y + 'px';
+  ring.style.transform = 'translate(-50%, -50%)';
+  document.body.appendChild(ring);
+  setTimeout(() => ring.remove(), 2000);
+}
+
+function startTrailer() {
+  if (started) return;
+  started = true;
+  enterBtn.style.display = 'none';
+
+  trailer.style.display = 'flex';
+  trailer.style.opacity = '1';
+  mainSite.style.display = 'none';
+
+  audio.currentTime = 0;
+  audio.volume = 0.9;
+  audio.play().catch(err => { console.log('پخش نشد:', err); showMainSite(); return; });
+
+  trailerText.textContent = 'به فانک لند خوش اومدید :)';
+  trailerText.classList.remove('glitch');
+
+  const totalSeconds = 25;
+  const interval = setInterval(() => {
+    const t = audio.currentTime;
+    loadingFill.style.width = Math.min((t / totalSeconds) * 100, 100) + '%';
+  }, 100);
+
+  setTimeout(() => {
+    shakeScreen();
+    spawnRing(window.innerWidth / 2, window.innerHeight / 2);
+    trailerText.classList.add('glitch');
+    setTimeout(() => { trailerText.textContent = 'شاهکارترین سایت فانک'; }, 200);
+    setTimeout(() => { trailerText.classList.remove('glitch'); }, 800);
+  }, 10000);
+
+  setTimeout(() => {
+    clearInterval(interval);
+    doFlash();
+    setTimeout(() => { audio.pause(); showMainSite(); }, 300);
+  }, 25000);
+}
+
+function showMainSite() {
+  trailer.style.transition = 'opacity 1s ease';
+  trailer.style.opacity = '0';
+  setTimeout(() => {
+    trailer.style.display = 'none';
+    mainSite.style.display = 'block';
+    mainSite.style.opacity = '0';
+    mainSite.style.transition = 'opacity 1s ease';
+    setTimeout(() => mainSite.style.opacity = '1', 50);
+  }, 1000);
+}
+
+if (skipTrailer) {
+  trailer.style.display = 'none';
+  mainSite.style.display = 'block';
+  mainSite.style.opacity = '1';
+  replayBtn.style.display = 'none';
+} else {
+  enterBtn.addEventListener('click', startTrailer);
+  replayBtn.addEventListener('click', () => {
+    started = false;
+    enterBtn.style.display = 'block';
+    startTrailer();
+  });
+  setInterval(() => {
+    if (trailer.style.display !== 'none' && started) {
+      spawnRing(Math.random() * window.innerWidth, Math.random() * window.innerHeight);
+    }
+  }, 1500);
+}
+
+// ==================== پروکسی ====================
+function proxyUrl(originalLink) {
+  if (!originalLink) return originalLink;
+  // اگه نسبیه، دست نزن
+  if (originalLink.startsWith("/") || originalLink.startsWith("uploads/")) return originalLink;
+  // از پروکسی رد کن
+  return PROXY_API + "?url=" + encodeURIComponent(originalLink);
+}
+
+// ==================== پارس songs.txt ====================
+function parseSongsTxt(text) {
+  const songs = [];
+  const blocks = text.split(/\n-{3,}\n/);
+  blocks.forEach((block, index) => {
+    const song = { added
