@@ -1,6 +1,6 @@
 // Vercel Serverless Function
 // GET /api/list-songs
-// لیست فایل‌های پوشه uploads رو از GitHub API می‌گیره
+// لیست فایل‌های صوتی پوشه uploads رو از GitHub API می‌گیره
 
 const GITHUB_REPO = "TheAghaBanafshi/all-repo";
 const UPLOADS_PATH = "admin/html/funkland/uploads";
@@ -21,7 +21,6 @@ export default async function handler(req, res) {
       "User-Agent": "FunkLand/1.0",
       "Accept": "application/vnd.github.v3+json",
     };
-    // اگه توکن داری، برای درخواست بیشتر
     if (process.env.GITHUB_TOKEN) {
       headers["Authorization"] = "token " + process.env.GITHUB_TOKEN;
     }
@@ -38,7 +37,6 @@ export default async function handler(req, res) {
 
     const files = await r.json();
 
-    // فیلتر: فقط فایل‌های صوتی
     const songs = files
       .filter(f => {
         if (f.type !== "file") return false;
@@ -46,28 +44,19 @@ export default async function handler(req, res) {
         return AUDIO_EXTENSIONS.some(ext => name.endsWith(ext));
       })
       .map(f => {
-        // اسم فایل بدون پسوند
         const baseName = f.name.replace(/\.[^.]+$/, "");
         return {
-          // اسم نمایشی: خط تیره و آندرلاین رو فاصله کن، capitalize
           name: baseName
             .replace(/[-_]+/g, " ")
             .replace(/\b\w/g, c => c.toUpperCase()),
           file: f.name,
-          // لینک مستقیم از jsDelivr (بدون CORS)
           link: `https://cdn.jsdelivr.net/gh/${GITHUB_REPO}@main/${UPLOADS_PATH}/${f.name}`,
-          // تاریخ کامیت آخر = تاریخ اضافه شدن (تقریبی)
-          added_at: Math.floor(Date.now() / 1000) - 0,
-          // سایز
+          added_at: 0,
           size: f.size,
         };
       });
 
-    // مرتب‌سازی بر اساس اسم نزولی (یا هرچی خواستی)
-    // از اونجایی که GitHub API history نمیده، بر اساس اسم مرتب می‌کنیم
-    songs.sort((a, b) => a.file.localeCompare(b.file));
-
-    return res.status(200).json({ songs });
+    return res.status(200).json({ songs, count: songs.length });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
